@@ -215,10 +215,14 @@ canvas { width: 100% !important; }
 
 /* ── Responsive ─── */
 @media (max-width: 768px) {
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
-    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-    .card { padding: 20px; }
+    body { padding: 16px 10px; }
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.3rem; }
+    .metrics-grid { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+    .signal-box { font-size: 0.8rem; padding: 14px; overflow-x: auto; }
+    table { font-size: 0.8rem; display: block; overflow-x: auto; }
+    .container { padding: 0 4px; }
 }
 
 /* ── Subtitle ─── */
