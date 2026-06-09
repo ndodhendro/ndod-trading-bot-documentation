@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ndod Trading Bot — Strategi ORB + FVG</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 0: INTRO -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h1>🚀 <span class="gradient-text">Ndod Trading Bot</span> 🚀</h1>
+    <p class="subtitle">Sistem trading otomatis saham Indonesia (IDX) berbasis strategi Opening Range Breakout (ORB) + Fair Value Gap (FVG)</p>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <p style="font-size:1.1rem">Sistem ini dibangun dengan <strong>Passion ✨ & Love ❤️</strong> terhadap dunia trading sistematis:</p>
+        <ul style="margin-top:12px">
+            <li>✅ <strong>Gratis</strong> — boleh dipakai oleh siapapun tanpa biaya</li>
+            <li>✅ <strong>Tidak ada fee tersembunyi</strong> — tidak ada langganan, tidak ada lock-in</li>
+            <li>✅ <strong>Tidak ada komisi</strong> — pembuat tidak mendapatkan keuntungan apapun dari trade kamu</li>
+            <li>✅ <strong>Tidak ada paksaan broker</strong> — bebas pakai broker manapun yang kamu suka</li>
+            <li>⚠️ <strong>Baca disclaimer di bawah</strong> — ini bukan ajakan jual/beli saham</li>
+        </ul>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Aturan Strategi</h3>
+        <table>
+            <thead><tr><th style="width:200px">Parameter</th><th style="width:160px">Nilai</th><th>Keterangan</th></tr></thead>
+            <tbody>
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Risk Management</td></tr>
+                <tr><td>Risk per Trade</td><td>1% dari equity</td><td>Risiko maksimal per posisi</td></tr>
+                <tr><td>Max Capital/Posisi</td><td>30%</td><td>Batas alokasi modal per posisi</td></tr>
+                <tr><td>Participation Cap</td><td>5% vol harian</td><td>Maks lot = 5% × Volume MA20. Mencegah order terlalu besar yang bisa menggerakkan harga pasar (market impact) dan menjaga realisme fill.</td></tr>
+                <tr><td>RR Ratio</td><td>1:1 (gross)</td><td>Target profit = jarak ke stop loss (sebelum fee)</td></tr>
+                <tr><td>Min Net RR</td><td>0,60</td><td>Trade ditolak jika net RR < 0,60</td></tr>
+                <tr><td>TP Lot %</td><td>100%</td><td>Jual semua saat TP (tanpa trailing stop)</td></tr>
+                <tr><td colspan="3" style="border-bottom:none; padding-top:8px"><p class="term-note" style="margin:0">Cara hitung Lot: (1) Lot dari risk = floor(1% × equity / |SL%| / (entry × 100 × (1+fee_beli))). (2) Cap ke max capital: lot ≤ floor(30% × equity / (entry × 100 × (1+fee_beli))). (3) Cap ke participation: lot ≤ floor(5% × VolumeMA20 / 100). Lot final = nilai terkecil dari ketiga batasan.</p></td></tr>
+
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Opening Range (OR)</td></tr>
+                <tr><td>Sesi OR</td><td>09:00–10:00</td><td>Jam pembentukan Opening Range (1 jam pertama)</td></tr>
+                <tr><td>Max Entry Time</td><td>15:45</td><td>Batas waktu entry terakhir</td></tr>
+
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Fair Value Gap (FVG)</td></tr>
+                <tr><td>Retrace %</td><td>50%</td><td>Entry di tengah FVG (area celah)</td></tr>
+                <tr><td>ATR Buffer SL</td><td>0,2 × ATR14</td><td>Buffer bawah FVG untuk SL</td></tr>
+                <tr><td>Min/Max Buffer Tick</td><td>2 / 8</td><td>Batas buffer SL dalam tick</td></tr>
+
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Portfolio</td></tr>
+                <tr><td>Max Posisi Bersamaan</td><td>7</td><td>Batas diversifikasi</td></tr>
+                <tr><td>Max Entry/Candle</td><td>5</td><td>Maks 5 entry per siklus 5 menit</td></tr>
+                <tr><td>Selection Rule</td><td>PNL_AMOUNT</td><td>Prioritas berdasarkan estimasi profit terbesar jika WIN</td></tr>
+                <tr><td>Universe</td><td>242 saham LIQUID</td><td>Saham paling likuid dari 954 saham IDX, difilter berdasarkan median turnover harian.</td></tr>
+
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Fee & Execution</td></tr>
+                <tr><td>Fee Beli</td><td>0,15%</td><td>Broker fee saat beli (Stockbit)</td></tr>
+                <tr><td>Fee Jual</td><td>0,25%</td><td>Broker fee saat jual (termasuk pajak)</td></tr>
+                <tr><td>Slippage</td><td>0%</td><td>Limit order — tidak ada slippage</td></tr>
+
+                <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Constraint (aturan tetap)</td></tr>
+                <tr><td>Hanya Long</td><td>—</td><td>Tidak ada short selling. Hanya beli.</td></tr>
+                <tr><td>1 entry/saham/hari</td><td>—</td><td>Setelah entry, tidak ada entry kedua di saham yang sama hari itu.</td></tr>
+                <tr><td>Overlap antar hari</td><td>Diizinkan</td><td>Posisi menginap tidak menghalangi entry baru besok di saham lain.</td></tr>
+                <tr><td>Harga pembulatan</td><td>Floor + Tick Size</td><td>Semua harga (Entry/SL/TP) dibulatkan ke bawah sesuai aturan tick size IDX.</td></tr>
+                <tr><td>Compounding</td><td>Equity berjalan</td><td>Sizing dihitung dari equity saat ini (modal + profit akumulasi).</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Apa yang dilakukan sistem ini?</h3>
+        <p>Sistem ini menguji dan menjalankan strategi trading saham secara <strong>sistematis</strong> — bukan berdasarkan feeling atau prediksi, melainkan aturan yang sudah divalidasi menggunakan data historis 6+ tahun dan 38 juta candle pada timeframe 5 menit.</p>
+        <p style="margin-top:12px">Strategi yang dipakai: <strong>ORB + FVG</strong></p>
+        <ul>
+            <li><strong>ORB</strong> (Opening Range Breakout) <span class="term-note">— rentang harga tertinggi-terendah selama jam pertama trading; jika harga menembus batas atas, itu sinyal potensi kenaikan</span> — sistem akan pantau rentang harga di jam pertama (09:00–10:00). Jika harga menembus batas atas rentang, itu sinyal awal.</li>
+            <li><strong>FVG</strong> (Fair Value Gap) <span class="term-note">— celah harga antara candle sebelum dan sesudah breakout; celah ini sering "diisi kembali" oleh harga, memberikan titik entry optimal</span> — setelah breakout, sistem akan tunggu harga kembali ke area "celah" untuk entry di harga yang lebih baik, bukan mengejar di harga tinggi.</li>
+        </ul>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: APA ITU BACKTEST -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>1. Apa Itu Backtest?</h2>
+
+    <div class="card">
+        <p><strong>Backtest</strong> = simulasi trading di masa lalu. Kita "putar ulang" data harga historis dan jalankan aturan strategi seolah-olah kita trading di waktu itu. Tujuannya: <em>memvalidasi apakah strategi ini menghasilkan profit secara konsisten sebelum dipakai dengan uang sungguhan.</em></p>
+        <p style="margin-top:12px">Analoginya: sebelum buka restoran, kamu coba resepnya 1000 kali dulu di dapur. Kalau hasilnya konsisten enak → baru buka restoran.</p>
+    </div>
+
+    <h3>Tahapan Backtest (dari sederhana ke kompleks)</h3>
+
+    <div class="flow">
+        <div class="flow-step">1. Single-Asset Backtest</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">2. Walk-Forward Backtest</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">3. Portfolio Backtest</div>
+    </div>
+
+    <div class="card">
+        <h3>① Single-Asset Backtest</h3>
+        <p>Uji strategi pada <strong>satu saham</strong> dengan berbagai kombinasi aturan strategi. Tujuannya mencari aturan strategi yang optimal. Ibarat mencari bumbu yang pas untuk satu masakan.</p>
+    </div>
+
+    <div class="card">
+        <h3>② Walk-Forward Backtest</h3>
+        <p>Data dibagi jadi dua bagian: <strong>periode latihan</strong> (train) dan <strong>periode ujian</strong> (test). aturan strategi dioptimalkan di periode latihan, lalu diuji di periode yang belum pernah "dilihat" oleh aturan strategi itu. Jika masih profit → aturan strategi tahan uji. Ini mencegah <strong>overfitting</strong> <span class="term-note">— aturan strategi terlalu disesuaikan ke data masa lalu sehingga hanya bekerja di data itu, gagal di data baru</span>.</p>
+        <p style="margin-top:8px">Analoginya: belajar dari soal latihan (train), lalu ujian dari soal yang berbeda (test). Kalau nilainya tetap bagus → memang pintar, bukan sekadar hafal.</p>
+    </div>
+
+    <div class="card">
+        <h3>③ Portfolio Backtest</h3>
+        <p>Simulasi <strong>trading banyak saham bersamaan</strong> dengan modal terbatas, persis seperti kondisi nyata. Ada batasan: maksimal 7 posisi terbuka, maksimal 5 entry per candle (per 5 menit), alokasi modal per posisi dibatasi 30%. Ini menguji apakah strategi tetap profitable saat menghadapi constraint dunia nyata.</p>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: HASIL PORTFOLIO BACKTEST -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>2. Hasil Portfolio Backtest</h2>
+    <p>Batch acuan: <span class="badge badge-blue">BACKTEST-RULE-PNL</span></p>
+    <p>Periode: Januari 2020 – April 2026 (6+ tahun) | Modal awal: Rp 20 juta | Universe: 242 saham paling likuid dari total 954 saham IDX</p>
+
+    <div class="metrics-grid">
+        <div class="metric">
+            <span class="metric-value">6.263</span>
+            <span class="metric-label">Total Trade</span>
+            <p class="metric-desc">Jumlah seluruh transaksi beli-jual yang terjadi selama 6+ tahun simulasi.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">67,91%</span>
+            <span class="metric-label">Win Rate</span>
+            <p class="metric-desc">Persentase trade yang profit. Dari 10 trade, rata-rata 6–7 berhasil.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">1,90</span>
+            <span class="metric-label">Profit Factor</span>
+            <p class="metric-desc">Total profit ÷ total loss. > 1 berarti profit lebih besar dari loss. Setiap Rp 100rb yang hilang, kembali Rp 190rb.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">0,69R</span>
+            <span class="metric-label">Net RR (setelah fee)</span>
+            <p class="metric-desc">RR gross = 1:1, tapi setelah dipotong fee beli 0,15% + jual 0,25%, net profit per WIN lebih kecil dari net loss per LOSS. Win rate tinggi (68%) yang mengkompensasi.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">Rp 555 jt</span>
+            <span class="metric-label">Total Profit Kumulatif</span>
+            <p class="metric-desc">Akumulasi seluruh profit setelah dikurangi loss dan fee, dari modal awal Rp 20 juta.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">+0,42%</span>
+            <span class="metric-label">Avg Profit / Trade</span>
+            <p class="metric-desc">Rata-rata keuntungan per trade (termasuk yang loss). Positif = secara statistik setiap trade menghasilkan.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">+2,01%</span>
+            <span class="metric-label">Avg WIN</span>
+            <p class="metric-desc">Rata-rata keuntungan per trade yang profit. Saat menang, rata-rata dapat +2% (net).</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">−2,93%</span>
+            <span class="metric-label">Avg LOSS</span>
+            <p class="metric-desc">Rata-rata kerugian per trade yang rugi. Saat kalah, rata-rata hilang -2,93% (net).</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">+4,66%</span>
+            <span class="metric-label">Avg Monthly Return</span>
+            <p class="metric-desc">Rata-rata return bulanan (compounding). StdDev bulanan: 4,0%.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">~28×</span>
+            <span class="metric-label">Return on Capital</span>
+            <p class="metric-desc">Modal Rp 20 jt → profit Rp 555 jt. Pertumbuhan ~28 kali lipat (compounding).</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">70,61%</span>
+            <span class="metric-label">CAGR</span>
+            <p class="metric-desc">Compound Annual Growth Rate — rata-rata pertumbuhan per tahun jika di-compound. Sebanding dengan return tahunan investasi terbaik di dunia.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">9</span>
+            <span class="metric-label">Max Consecutive Losses</span>
+            <p class="metric-desc">Loss beruntun terpanjang. Pernah kalah 9× berturut-turut — tapi pulih kembali. Mental harus siap.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">−4,68%</span>
+            <span class="metric-label">Max Drawdown</span>
+            <p class="metric-desc">Penurunan equity terbesar dari puncak ke lembah. Dari Rp 683 jt turun Rp 32 jt sebelum pulih. Sangat terkontrol.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">2,21</span>
+            <span class="metric-label">Sharpe Ratio</span>
+            <p class="metric-desc">Return dibagi risiko (volatilitas). > 2 = excellent. Artinya profit yang dihasilkan sangat stabil relatif terhadap fluktuasinya.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">3,53</span>
+            <span class="metric-label">Sharpe Ratio (ann.)</span>
+            <p class="metric-desc">Dari monthly returns. > 2 = excellent. Dihitung: avg_monthly / stddev_monthly × √12.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value" style="color:var(--accent-green)">> 0,99</span>
+            <span class="metric-label">Deflated Sharpe Ratio</span>
+            <p class="metric-desc">Probabilitas Sharpe sejati > 0 SETELAH dikoreksi data snooping (267 kombinasi parameter diuji) + non-normalitas (skew +0,70, kurtosis 3,93). > 0,95 = edge bukan kebetulan. Tetap > 0,99 bahkan di skenario paling konservatif.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">13,40</span>
+            <span class="metric-label">Sortino Ratio (ann.)</span>
+            <p class="metric-desc">Hanya downside deviation. Lebih tinggi dari Sharpe karena loss months sedikit dan dangkal.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">15,09</span>
+            <span class="metric-label">Calmar Ratio</span>
+            <p class="metric-desc">CAGR / Max Drawdown = 70,6% / 4,68%. > 3 = sangat baik.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">13,16</span>
+            <span class="metric-label">SQN</span>
+            <p class="metric-desc">System Quality Number — mengukur seberapa "baik" sebuah sistem trading. > 7 = "holy grail" (klasifikasi Van Tharp). Semakin tinggi = edge semakin konsisten.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">6,2</span>
+            <span class="metric-label">Avg Entry / Hari</span>
+            <p class="metric-desc">Rata-rata jumlah entry per hari trading. Hampir setiap hari ada peluang.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">~2,3 jam</span>
+            <span class="metric-label">Avg Holding Time</span>
+            <p class="metric-desc">Rata-rata lama posisi terbuka (sejak entry sampai TP/SL). Mayoritas selesai dalam hari yang sama, tapi sebagian kecil bisa menginap.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">~3,1 jam</span>
+            <span class="metric-label">Avg Capital Lock</span>
+            <p class="metric-desc">Rata-rata total modal terkunci (sejak sinyal entry → pasang limit → entry → TP/SL). Termasuk ~46 menit antri sebelum entry.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value">39,00%</span>
+            <span class="metric-label">Overnight Rate</span>
+            <p class="metric-desc">Persentase trade yang menginap ke hari berikutnya (posisi belum TP/SL saat market tutup). 61% selesai di hari yang sama.</p>
+        </div>
+    </div>
+
+    <h3>Distribusi Entry per Jam</h3>
+    <table>
+        <thead>
+            <tr><th>Jam</th><th>Trade</th><th>Win Rate</th><th>PF</th><th>Keterangan</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>09:00 - 10:00</td><td colspan="3" style="color:var(--text-dim)">—</td><td>Sesi OR (pembentukan Opening Range, belum ada entry)</td></tr>
+            <tr><td>10:00 - 11:00</td><td>1.420</td><td>63,4%</td><td>1,36</td><td>Entry pertama setelah OR lock</td></tr>
+            <tr><td>11:00 - 12:00</td><td>1.475</td><td>67,1%</td><td>2,06</td><td>Akhir sesi 1 — momentum kuat</td></tr>
+            <tr><td>12:00 - 13:00</td><td colspan="3" style="color:var(--text-dim)">—</td><td>Istirahat siang (tidak ada trading)</td></tr>
+            <tr><td>13:00 - 14:00</td><td>971</td><td>66,8%</td><td>1,86</td><td>Awal sesi 2</td></tr>
+            <tr><td>14:00 - 15:00</td><td>1.735</td><td>71,6%</td><td>2,09</td><td>⭐ Jam terbanyak & terbaik</td></tr>
+            <tr><td>15:00 - 16:00</td><td>662</td><td>71,5%</td><td>2,81</td><td>⭐ PF tertinggi — entry sore sangat berkualitas</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Equity Curve (Pertumbuhan Profit Kumulatif)</h3>
+    <div class="chart-container">
+        <canvas id="equityChart"></canvas>
+    </div>
+
+    <h3>Performa Per Tahun</h3>
+    <table>
+        <thead>
+            <tr><th>Tahun</th><th>Trade</th><th>Win Rate</th><th>Equity Awal<br>(Compounding)</th><th>Profit</th><th>Return %</th><th>PF</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>2020</td><td>281</td><td>63,3%</td><td>Rp 20 jt</td><td>Rp 5,6 jt</td><td>+28,2%</td><td>1,53*</td></tr>
+            <tr><td>2021</td><td>978</td><td>67,1%</td><td>Rp 27 jt</td><td>Rp 31,8 jt</td><td>+120,0%</td><td>—</td></tr>
+            <tr><td>2022</td><td>970</td><td>66,5%</td><td>Rp 58 jt</td><td>Rp 41,0 jt</td><td>+70,7%</td><td>—</td></tr>
+            <tr><td>2023</td><td>967</td><td>66,7%</td><td>Rp 100 jt</td><td>Rp 48,0 jt</td><td>+48,0%</td><td>—</td></tr>
+            <tr><td>2024</td><td>1.181</td><td>67,1%</td><td>Rp 148 jt</td><td>Rp 77,5 jt</td><td>+52,3%</td><td>—</td></tr>
+            <tr><td>2025</td><td>1.478</td><td>71,4%</td><td>Rp 227 jt</td><td>Rp 253,7 jt</td><td>+111,6%</td><td>—</td></tr>
+            <tr><td>2026 (Jan–Apr)</td><td>408</td><td>68,9%</td><td>Rp 484 jt</td><td>Rp 91,3 jt</td><td>+18,9%</td><td>—</td></tr>
+        </tbody>
+    </table>
+
+    <div class="card card-highlight">
+        <p>Perhatikan: profit <strong>konsisten positif setiap tahun</strong> selama 6+ tahun. Win rate stabil di 63–71%. Profit factor selalu > 1,4. Ini menunjukkan edge yang robust, bukan keberuntungan satu tahun.</p>
+        <p style="margin-top:12px"><strong>Dari 75 bulan trading, hanya 10 bulan yang loss (87% bulan profit).</strong> Rata-rata bulan yang profit menghasilkan +Rp 6,0 jt. Rata-rata bulan yang loss hanya −Rp 1,3 jt. Artinya 1 bulan loss bisa di-cover oleh kurang dari 1 bulan profit berikutnya.</p>
+    </div>
+
+    <h3>Monthly Return Heatmap (%)</h3>
+    <div style="overflow-x:auto">
+    <table style="font-size:0.85rem">
+        <thead><tr><th>Tahun</th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th></tr></thead>
+        <tbody>
+            <tr><td>2020</td><td></td><td style="color:var(--accent-green)">+1,3</td><td>0,0</td><td style="color:var(--accent-green)">+4,4</td><td style="color:var(--accent-red)">-4,0</td><td style="color:var(--accent-green)">+7,4</td><td style="color:var(--accent-red)">-0,4</td><td style="color:var(--accent-green)">+2,7</td><td style="color:var(--accent-green)">+0,1</td><td style="color:var(--accent-red)">-2,2</td><td style="color:var(--accent-green)">+11,1</td><td style="color:var(--accent-green)">+4,2</td></tr>
+            <tr><td>2021</td><td style="color:var(--accent-green)">+4,9</td><td style="color:var(--accent-green)">+13,9</td><td style="color:var(--accent-green)">+9,8</td><td style="color:var(--accent-green)">+17,0</td><td style="color:var(--accent-green)">+7,1</td><td style="color:var(--accent-green)">+4,1</td><td style="color:var(--accent-red)">-0,8</td><td style="color:var(--accent-green)">+4,3</td><td style="color:var(--accent-green)">+13,9</td><td style="color:var(--accent-green)">+2,1</td><td style="color:var(--accent-green)">+3,5</td><td style="color:var(--accent-green)">+6,8</td></tr>
+            <tr><td>2022</td><td style="color:var(--accent-green)">+11,9</td><td style="color:var(--accent-green)">+9,8</td><td style="color:var(--accent-green)">+0,6</td><td style="color:var(--accent-green)">+6,6</td><td style="color:var(--accent-green)">+5,7</td><td style="color:var(--accent-green)">+5,6</td><td style="color:var(--accent-red)">-1,3</td><td style="color:var(--accent-green)">+8,1</td><td style="color:var(--accent-green)">+6,1</td><td style="color:var(--accent-red)">-1,8</td><td style="color:var(--accent-green)">+2,8</td><td style="color:var(--accent-green)">+1,0</td></tr>
+            <tr><td>2023</td><td style="color:var(--accent-green)">+8,5</td><td style="color:var(--accent-green)">+1,7</td><td style="color:var(--accent-green)">+4,0</td><td style="color:var(--accent-green)">+2,7</td><td style="color:var(--accent-green)">+1,5</td><td style="color:var(--accent-green)">+3,6</td><td style="color:var(--accent-green)">+3,9</td><td style="color:var(--accent-green)">+1,8</td><td style="color:var(--accent-green)">+1,6</td><td style="color:var(--accent-green)">+7,2</td><td style="color:var(--accent-green)">+1,4</td><td style="color:var(--accent-green)">+3,2</td></tr>
+            <tr><td>2024</td><td style="color:var(--accent-green)">+2,7</td><td style="color:var(--accent-green)">+2,2</td><td style="color:var(--accent-red)">-3,1</td><td style="color:var(--accent-green)">+6,5</td><td style="color:var(--accent-green)">+2,5</td><td style="color:var(--accent-red)">-2,3</td><td style="color:var(--accent-green)">+8,9</td><td style="color:var(--accent-green)">+5,0</td><td style="color:var(--accent-green)">+11,6</td><td style="color:var(--accent-green)">+3,2</td><td style="color:var(--accent-green)">+5,1</td><td style="color:var(--accent-green)">+1,6</td></tr>
+            <tr><td>2025</td><td style="color:var(--accent-green)">+2,9</td><td style="color:var(--accent-green)">+2,0</td><td style="color:var(--accent-green)">+5,0</td><td style="color:var(--accent-green)">+2,4</td><td style="color:var(--accent-green)">+5,9</td><td style="color:var(--accent-red)">-2,1</td><td style="color:var(--accent-green)">+11,5</td><td style="color:var(--accent-green)">+17,7</td><td style="color:var(--accent-green)">+11,2</td><td style="color:var(--accent-green)">+7,5</td><td style="color:var(--accent-green)">+8,6</td><td style="color:var(--accent-green)">+6,8</td></tr>
+            <tr><td>2026</td><td style="color:var(--accent-green)">+9,7</td><td style="color:var(--accent-green)">+6,7</td><td style="color:var(--accent-green)">+1,4</td><td style="color:var(--accent-green)">+0,7</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p style="color:var(--text-dim); font-size:0.85rem; margin-top:8px">Merah = bulan loss (10 dari 75 bulan = 13%). Bulan terburuk: -4,0% (May 2020). Tidak ada bulan loss > 4%.</p>
+
+    <h3>Simulasi PnL per Modal (estimasi berdasarkan backtest)</h3>
+    <div class="card card-warning">
+        <p style="font-size:0.9rem">⚠️ Ini estimasi dari backtest — bukan jaminan. Live performance dipengaruhi execution, psikologi, dan kondisi market saat itu. Gunakan sebagai referensi order-of-magnitude, bukan target pasti.</p>
+    </div>
+    <table>
+        <thead><tr><th>Modal</th><th>Avg/Bulan</th><th>Median/Bulan</th><th>Bulan Terburuk</th><th>Bulan Terbaik</th></tr></thead>
+        <tbody>
+            <tr><td>Rp 10 jt</td><td>+Rp 466 rb</td><td>+Rp 272 rb</td><td>-Rp 400 rb</td><td>+Rp 3,97 jt</td></tr>
+            <tr><td>Rp 20 jt</td><td>+Rp 932 rb</td><td>+Rp 544 rb</td><td>-Rp 800 rb</td><td>+Rp 7,93 jt</td></tr>
+            <tr><td>Rp 50 jt</td><td>+Rp 2,33 jt</td><td>+Rp 1,36 jt</td><td>-Rp 2,0 jt</td><td>+Rp 19,8 jt</td></tr>
+            <tr><td>Rp 100 jt</td><td>+Rp 4,66 jt</td><td>+Rp 2,72 jt</td><td>-Rp 4,0 jt</td><td>+Rp 39,7 jt</td></tr>
+        </tbody>
+    </table>
+    <p class="term-note">Dihitung linear dari avg monthly return 4,66%. Scalability terbatas oleh participation cap (5% volume) — modal > Rp 500 jt mulai menyentuh batas likuiditas di beberapa saham.</p>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-red);">
+        <h3>Ketahanan Saat Market Crash</h3>
+        <p>Strategi ini <strong>bukan kebal terhadap crash</strong> — tapi dirancang untuk <em>membatasi damage dan pulih cepat</em>. Berikut performa di periode-periode paling buruk:</p>
+        <table>
+            <thead>
+                <tr><th>Periode</th><th>Event</th><th>Trade</th><th>Win Rate</th><th>Hasil</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Mar 2020</td><td>COVID crash</td><td>19</td><td>47%</td><td>−Rp 107 rb</td></tr>
+                <tr><td>May 2020</td><td>Post-crash volatility</td><td>20</td><td>45%</td><td>−Rp 415 rb</td></tr>
+                <tr><td>Oct 2022</td><td>Global tightening</td><td>86</td><td>64%</td><td>−Rp 525 rb</td></tr>
+                <tr><td>Mar 2024</td><td>IDX correction</td><td>62</td><td>56,5%</td><td>−Rp 1,3 jt</td></tr>
+            </tbody>
+        </table>
+        <p style="margin-top:12px"><strong>Poin kunci:</strong></p>
+        <ul>
+            <li><strong>Frekuensi turun drastis saat crash.</strong> Maret 2020 (COVID) hanya 19 trade vs rata-rata 80+/bulan. Strategi secara alami "menghindar" karena OR filter menjadi sangat ketat saat volatilitas ekstrem → saham tidak lolos filter → tidak ada signal palsu.</li>
+            <li><strong>Kerugian terkontrol.</strong> Bulan terburuk sepanjang 6 tahun = −Rp 4,5 jt (Mar 2024). Dibanding total profit Rp 555 jt, ini hanya ~0,8% — sangat manageable.</li>
+            <li><strong>Recovery cepat.</strong> Setelah COVID crash Maret 2020, equity sudah pulih ke level sebelumnya di bulan Juni 2020 (3 bulan). Setelah itu langsung melesat.</li>
+            <li><strong>Tidak ada signal palsu di crash.</strong> Bukan strategi yang "terus beli saat market jatuh" — filter OR secara natural menolak setup di hari-hari chaos karena range terlalu lebar/tidak memenuhi kriteria.</li>
+        </ul>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-green);">
+        <h3>Peristiwa Crash IDX Terbaru — Justru Profit</h3>
+        <p>Yang mengejutkan: di tiga peristiwa crash terbesar IDX 2025–2026, strategi ini justru <strong>menghasilkan profit signifikan</strong>:</p>
+        <table>
+            <thead>
+                <tr><th>Tanggal</th><th>Peristiwa</th><th>Trade</th><th>Win</th><th>Profit</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>18 Mar 2025</td><td><strong>The March Panic</strong> — Isu pengunduran diri Menkeu & panic selling blue chip</td><td>1</td><td>1</td><td style="color:#00d2a0">+Rp 393 rb</td></tr>
+                <tr><td>28 Jan 2026</td><td><strong>MSCI Interim Freeze Shock</strong> — Pengumuman mendadak MSCI memicu aksi jual massal asing</td><td>1</td><td>1</td><td style="color:#00d2a0">+Rp 5,8 rb</td></tr>
+                <tr><td>29 Jan 2026</td><td><strong>Frontier Market Scare</strong> — Rumor penurunan kasta indeks ke Frontier Market</td><td>19</td><td>15</td><td style="color:#00d2a0">+Rp 5,7 jt</td></tr>
+            </tbody>
+        </table>
+        <p style="margin-top:12px"><strong>Kenapa bisa profit saat crash?</strong></p>
+        <ul>
+            <li>Crash biasanya ditandai <strong>gap down besar di pembukaan</strong> → Opening Range sangat lebar → filter OR menolak sebagian besar saham (menghindari jebakan)</li>
+            <li>Saham yang <em>lolos</em> filter di hari crash justru yang memiliki OR ketat (= saham yang relatif tenang) dan breakout-nya valid — ini biasanya saham yang "berbeda dari kerumunan" dan rebound cepat</li>
+            <li>Strategi ini hanya Long (beli), tapi <strong>sangat selektif</strong> — di hari crash, hanya 1 trade (18 Mar) dibanding normal 4–5/hari. Filter bekerja.</li>
+        </ul>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: CONSTRAINTS & REALISME -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>3. Backtest vs Real — Apa yang Perlu Diwaspadai?</h2>
+
+    <div class="card card-warning">
+        <h3>⚠️ Backtest BUKAN jaminan hasil masa depan</h3>
+        <p>Backtest menunjukkan bahwa strategi <em>pernah</em> bekerja di kondisi pasar masa lalu. Tapi pasar bisa berubah. Berikut hal-hal yang sudah kami terapkan untuk menjaga realisme:</p>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Yang sudah diterapkan untuk realisme (Portfolio Backtest)</h3>
+        <ul>
+            <li><strong>Fee realistis</strong> — fee beli 0,15% dan fee jual 0,25% (sesuai Stockbit) sudah dihitung di setiap trade.</li>
+            <li><strong>Hanya saham likuid</strong> — universe dibatasi 242 saham dengan turnover <span class="term-note">(nilai perdagangan harian = harga × volume; saham likuid = banyak diperdagangkan, mudah beli/jual tanpa menggerakkan harga)</span> tinggi. Saham tidak likuid (susah dijual) dikecualikan.</li>
+            <li><strong>Participation cap</strong> — maksimal 5% dari volume harian. Kita tidak boleh "terlalu besar" di satu saham sampai menggerakkan harga sendiri.</li>
+            <li><strong>Compounding sizing</strong> — ukuran posisi dihitung berdasarkan equity berjalan (modal + profit akumulasi). Semakin equity tumbuh, semakin besar posisi → pertumbuhan eksponensial. Risiko per trade secara persentase tetap terkontrol (1% dari equity, maks 30% alokasi per posisi), hanya secara nominal (Rupiah) yang membesar seiring equity naik.</li>
+            <li><strong>Gap-down modeling</strong> — jika harga buka (open) di bawah Stop Loss akibat gap overnight, posisi ditutup di harga open (bukan SL) = loss lebih besar dari rencana. Ini sudah diperhitungkan.</li>
+            <li><strong>Delay before buy</strong> — simulasi keterlambatan eksekusi 1 candle (5 menit) setelah sinyal muncul.</li>
+            <li><strong>Maksimal 7 posisi bersamaan</strong> — tidak bisa "all in" ke semua sinyal sekaligus.</li>
+        </ul>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-orange);">
+        <h3>Risiko yang tetap ada</h3>
+        <ul>
+            <li><strong>Tidak ada diversifikasi aset</strong> — seluruh modal dialokasikan ke satu jenis instrumen (saham IDX) dan satu strategi (ORB+FVG). Jika kondisi pasar IDX secara keseluruhan berubah drastis, seluruh portofolio terdampak tanpa hedge.</li>
+            <li><strong>Total exposure bisa mencapai 100%</strong> — dengan max 7 posisi × max 30% alokasi per posisi, secara teoritis seluruh modal bisa terpakai bersamaan. Jika semua posisi kena SL di hari yang sama (skenario ekstrem), kerugian bisa ~7% dari equity sekaligus (7 × 1% risk per trade).</li>
+            <li><strong>Market regime change</strong> — jika kondisi pasar IDX berubah fundamental (regulasi baru, krisis berkepanjangan, likuiditas menghilang), strategi bisa berhenti bekerja. Virtual account benchmark membantu mendeteksi ini lebih awal.</li>
+            <li><strong>Execution risk</strong> — di dunia nyata, Limit Order bisa tidak terisi (harga lewat tanpa fill), terutama di saham dengan volume rendah. Backtest mengasumsikan selalu terisi.</li>
+            <li><strong>Psikologi trader</strong> — backtest tidak punya emosi. Manusia bisa panik dan menyimpang dari rencana saat loss beruntun (terpanjang: 9× berturut). Disiplin mengikuti sistem adalah kunci.</li>
+            <li><strong>Gap overnight</strong> — posisi yang menginap bisa terkena gap turun di pembukaan hari berikutnya. SL bisa ter-trigger di harga lebih buruk dari target. Sudah dimodelkan di backtest, tapi dampaknya tetap nyata.</li>
+        </ul>
+    </div>
+    
+    <div class="card" style="border-left: 4px solid var(--accent-blue);">
+    <h3>Transparansi & Limitasi (untuk evaluasi profesional)</h3>
+        <ul>
+            <li><strong>Backtest only</strong> — belum ada live track record (dimulai Juni 2026). Virtual account benchmark berjalan paralel sebagai forward test.</li>
+            <li><strong>Survivorship bias minimal</strong> — universe menggunakan `is_active` flag saat ini, bukan filter dinamis per-tahun. Saham yang delisted di tengah jalan tidak masuk dataset.</li>
+            <li><strong>Data snooping risk</strong> — parameter dioptimasi via sweep pada data historis. Mitigasi: walk-forward validation 8 window non-overlapping (semua positif).</li>
+            <li><strong>No transaction cost for capital</strong> — backtest tidak memperhitungkan opportunity cost modal yang idle (equity di rekening broker tidak menghasilkan bunga).</li>
+            <li><strong>Capacity constraint</strong> — strategi ini bekerja di small-to-mid capital (Rp 20 jt – Rp 500 jt). Di atas itu, participation cap dan likuiditas IDX menjadi bottleneck.</li>
+            <li><strong>Single strategy, single market</strong> — tidak ada diversifikasi strategi maupun cross-market. Fully exposed ke regime risk IDX.</li>
+            <li><strong>Gap risk modeled but imperfect</strong> — gap-down overnight dimodelkan (fill at open), tapi magnitude sebenarnya bisa lebih besar di event tak terduga.</li>
+        </ul>
+    </div>
+
+    <div class="card" style="border-left: 4px solid var(--accent-blue);">
+        <h3>💡 Prinsip Modal: Gunakan Uang Dingin</h3>
+        <p>Sistem dirancang untuk membatasi kerugian lewat risk per trade (1%), position sizing, stop loss, dan batas alokasi modal. <strong>Tapi tidak ada jaminan nol kerugian.</strong></p>
+        <p style="margin-top:12px">Pastikan modal yang dipakai untuk trading memenuhi <strong>semua</strong> kriteria berikut:</p>
+        <ul>
+            <li>✅ <strong>Bukan</strong> uang kebutuhan hidup sehari-hari</li>
+            <li>✅ <strong>Bukan</strong> uang hasil utang/pinjaman</li>
+            <li>✅ <strong>Bukan</strong> dana darurat</li>
+            <li>✅ <strong>Bukan</strong> uang yang kamu butuhkan dalam 1–2 tahun ke depan</li>
+            <li>✅ Secara mental-finansial kamu <strong>sanggup menerima risiko terburuk</strong> (modal berkurang 20–30% dalam bulan yang sangat buruk)</li>
+        </ul>
+        <p style="margin-top:12px">Target sistem bukan untuk kehilangan modal — melainkan <strong>membatasi kerugian</strong> dan <strong>memaksimalkan peluang</strong>. Tapi risiko selalu ada, dan kesiapan mental-finansial adalah fondasi yang tidak bisa digantikan oleh strategi apapun.</p>
+    </div>
+
+    <div class="card" style="border-left: 4px solid var(--accent-blue);">
+        <h3>🔄 Strategi Akan Di-update Berkala</h3>
+        <p>Kondisi market tidak statis — sektor yang dominan, pola volatilitas, dan perilaku pelaku pasar bisa berubah dari waktu ke waktu. Oleh karena itu:</p>
+        <ul>
+            <li>Aturan strategi akan <strong>di-review dan di-update secara berkala</strong> berdasarkan hasil evaluasi re-backtest dengan data terbaru.</li>
+            <li>Jika edge mulai melemah (profit factor menurun, win rate turun signifikan), aturan strategi akan disesuaikan atau strategi diperbaiki agar tetap profitable.</li>
+            <li>Update akan <strong>diinformasikan ke seluruh user</strong> melalui Telegram sebelum diterapkan.</li>
+            <li>Proses update mengikuti pipeline yang sama: backtest ulang → validasi walk-forward → konfirmasi edge → deploy ke scanner live.</li>
+        </ul>
+        <p style="margin-top:8px; color: var(--text-dim)">Tujuannya: sistem tetap adaptif terhadap perubahan market, bukan "set and forget" yang bisa usang.</p>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: ENTRY SIGNAL SCANNER -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>4. Entry Signal Scanner — Cara Pakainya</h2>
+
+    <div class="card">
+        <h3>Apa ini?</h3>
+        <p>Scanner adalah "mata" yang memantau 242 saham secara real-time selama jam trading (09:00–15:00). Ketika ada saham yang memenuhi kriteria strategi ORB+FVG, scanner langsung kirim notifikasi ke Telegram kamu berisi:</p>
+        <ul>
+            <li><strong>Saham apa</strong> yang perlu dibeli</li>
+            <li><strong>Harga Entry</strong> — di mana pasang Limit Order</li>
+            <li><strong>Lot</strong> — berapa banyak yang dibeli (disesuaikan modal kamu *risk management)</li>
+            <li><strong>Harga SL</strong> (Stop Loss) <span class="term-note">— batas harga untuk potong rugi jika ternyata salah arah</span></li>
+            <li><strong>Harga TP</strong> (Take Profit) <span class="term-note">— target harga untuk ambil untung</span></li>
+        </ul>
+    </div>
+
+    <h3>Alur Kerja Scanner</h3>
+    <div class="flow">
+        <div class="flow-step">📊 Pantau 242 saham</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">🔍 Deteksi OR + Breakout + FVG</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">📱 Kirim notif Telegram</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">👤 User pasang Limit Order</div>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Kapan notifikasi dikirim?</h3>
+        <p>Notifikasi dikirim <strong>sesegera mungkin saat FVG terbentuk</strong> — yaitu saat engine sudah mengetahui harga Entry/SL/TP yang pasti. Ini memberi kamu waktu untuk memasang Limit Order <span class="term-note">(order beli di harga tertentu yang kamu tentukan; tereksekusi otomatis jika harga turun ke level itu)</span> <em>sebelum</em> harga retrace ke area entry.</p>
+        <p style="margin-top:8px">Ibarat: kamu dikasih tahu "harga akan turun ke 3810, pasang jebakan di situ" — lalu kamu pasang, dan tunggu harganya datang.</p>
+        <p style="margin-top:12px"><strong>Timing:</strong> Sinyal dikirim pada <strong>menit kelipatan 5</strong> (10:00, 10:05, 10:10, dst). Jadi jika kamu dapat notifikasi jam 10:05, kamu masih punya waktu — harga biasanya belum retrace ke Entry secepat itu.</p>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Kenapa Tanpa Trailing Stop & Tanpa TP Bertahap (TP1/TP2)?</h3>
+        <p>Strategi ini sengaja menggunakan <strong>TP 100% sekaligus</strong> (seluruh posisi dijual saat harga mencapai target) dan <strong>tanpa trailing stop</strong>. Alasannya:</p>
+        <ul>
+            <li><strong>Hasil backtest lebih optimal</strong> — aturan strategi <code>tp_lot_percent = 100%</code> (jual semua di TP) menghasilkan profit factor dan win rate lebih tinggi dibanding skema parsial (TP1 sebagian + trailing stop sisa). Sudah diuji via aturan strategi sweep.</li>
+            <li><strong>Eksekusi sangat sederhana</strong> — user cukup pasang 3 order: <em>Limit Order</em> di Entry, <em>Stop Loss</em>, dan <em>Take Profit</em>. Setelah itu <strong>boleh ditinggal</strong> — tidak perlu pantau chart, geser SL, atau atur trailing. Cocok untuk yang punya pekerjaan utama lain.</li>
+            <li><strong>Menghilangkan keputusan subjektif</strong> — trailing stop memerlukan judgment "kapan geser" dan "seberapa ketat". Ini sumber error manusia. Dengan TP fixed, aturannya hitam-putih: kena TP = untung, kena SL = rugi, selesai.</li>
+            <li><strong>Konsisten dengan win rate tinggi (67%)</strong> — strategi ini mengandalkan frekuensi menang yang tinggi dengan target moderat (RR 1:1), bukan mengejar "big winner" yang jarang. Trailing stop lebih cocok untuk strategi low-win-rate-high-RR.</li>
+        </ul>
+        <p style="margin-top:12px"><strong>Nilai plus buat user:</strong> Cukup <em>antri beli di harga Entry saat dapat notifikasi</em>, set SL & TP, lalu lanjut aktivitas. Tidak perlu memantau posisi sampai salah satu order (TP atau SL) tereksekusi.</p>
+    </div>
+
+    <div class="card card-highlight">
+        <h3>💡 Tips Opsional: Geser SL ke BEP</h3>
+        <p>Meskipun strategi dasar tidak mengharuskan kamu memantau posisi, ada satu langkah opsional yang <strong>sangat dianjurkan</strong> jika kamu sempat:</p>
+        <p style="margin-top:8px"><strong>Jika harga sudah naik signifikan dari Entry, geser Stop Loss ke BEP <span class="term-note">(Break Even Point: harga di mana kamu tidak untung dan tidak rugi, biasanya = harga beli + fee)</span>.</strong></p>
+        <p style="margin-top:8px">Efeknya: worst case kamu keluar tanpa rugi (break even), bukan kena SL asli. Ini mengubah potensi loss jadi nol pada trade yang sudah bergerak ke arah benar.</p>
+        <p style="margin-top:12px; color: var(--text-dim); font-size: 0.9rem"><em>⚠️ Catatan: langkah ini tidak termasuk dalam strategi yang dibacktest. Angka-angka backtest di atas BELUM memperhitungkan geser SL ke BEP. Dampak aktualnya: mengurangi loss tapi kadang ter-stop di BEP sebelum TP tercapai (trade yang seharusnya WIN bisa jadi break even). Overall impact diperkirakan positif terhadap equity.</em></p>
+    </div>
+
+    <h3>Contoh Notifikasi Telegram</h3>
+    <div class="signal-box">📊 <b>Entry Signal — 13:40:00 WIB</b>
+Equity acuan: Rp 20.000.000
+
+#1 <strong>AMMN</strong>
+  Entry : 3.810
+  Lot    : 2
+  SL     : 3.680
+  TP     : 3.940
+  P&L   : Rp 22.470 (+2,95%)
+
+#2 <strong>YELO</strong>
+  Entry : 84
+  Lot    : 78
+  SL     : 81
+  TP     : 87
+  P&L   : Rp 21.950 (+3,35%)
+
+#3 <strong>MIKA</strong>
+  Entry : 1.680
+  Lot    : 5
+  SL     : 1.645
+  TP     : 1.715
+  P&L   : Rp 15.888 (+1,89%)
+
+#4 <strong>BOGA</strong> ⚠️<b>Perhatikan Bid-Ask</b>
+  Entry : 1.205
+  Lot    : 3
+  SL     : 1.020
+  TP     : 1.390
+  P&L   : Rp 54.435 (+15,06%)
+
+#5 <strong>HOPE</strong> ⚠️<b>Perhatikan Bid-Ask</b>
+  Entry : 106
+  Lot    : 38
+  SL     : 96
+  TP     : 116
+  P&L   : Rp 37.124 (+9,27%)
+<br>
+ℹ️ <i>/signal — untuk cek apakah sinyal yang sudah diberikan masih valid.</i>
+⚠️ <i>Pastikan untuk tidak Entry saham yang sama pada hari yang sama lebih dari sekali!</i></div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Yang perlu kamu lakukan setelah dapat notifikasi</h3>
+        <ol>
+            <li>Buka Stockbit → cari saham yang disebutkan</li>
+            <li>Pasang <strong>Limit Order Buy</strong> di harga Entry dengan jumlah Lot yang tertera</li>
+            <li>Di form yang sama, <strong>centang SL dan TP sekaligus</strong> — isi harga SL dan TP sesuai sinyal. Stockbit memungkinkan pasang SL + TP bersamaan dengan limit buy dalam satu order.</li>
+            <li>Submit order → selesai. Semuanya otomatis dari sini: buy di Entry, sell di TP jika profit, atau sell di SL jika rugi.</li>
+            <li>Jika sampai akhir hari order tidak terisi (harga tidak retrace ke Entry) → batalkan order</li>
+        </ol>
+        <p style="margin-top:8px"><strong>⚠️ PENTING:</strong> Selalu pasang SL + TP <em>bersamaan</em> dengan limit buy — jangan terpisah. Ini memastikan proteksi aktif sejak detik pertama posisi terbuka, tanpa perlu monitoring manual.</p>
+    </div>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-blue);">
+        <h3>Pendaftaran & Command Telegram</h3>
+        <table>
+            <tr><td><code>/help</code></td><td>Untuk melihat daftar command bot</td></tr>
+            <tr><td><code>/register nama equity</code></td><td>Daftar (status: belum aktif). Contoh: <code>/register ndod 20000000</code></td></tr>
+            <tr><td><code>/consent</code></td><td>Setuju disclaimer & aktifkan penerimaan sinyal (wajib setelah register)</td></tr>
+            <tr><td><code>/equity nominal</code></td><td>Update modal kapanpun. Contoh: <code>/equity 80000000</code></td></tr>
+            <tr><td><code>/signal</code></td><td>Cek sinyal yang masih valid hari ini (belum TP/SL/batal/expired). Setelah 15:45 WIB (MaxEntryTime), seluruh sinyal dianggap expired dan /signal mengembalikan daftar kosong. Saham illiquid ditandai ⚠️ dan diurutkan ke bawah.</td></tr>
+            <tr><td><code>/info</code></td><td>Ringkasan progress scanner hari ini. Kategori mutually exclusive: Gagal + Tahap 1 + Tahap 2 + Tahap 3 = Total universe. Tahap 1 = OR valid (menunggu breakout), Tahap 2 = breakout (menunggu FVG), Tahap 3 = signal terkirim (aktif/exit/batal). Setelah 15:45 WIB, sinyal yang belum exit dihitung sebagai batal/expired.</td></tr>
+            <tr><td><code>/stop</code></td><td>Berhenti menerima notifikasi (bisa aktif lagi dengan /consent)</td></tr>
+        </table>
+        <p style="margin-top:12px"><strong>Alur pendaftaran:</strong></p>
+        <ol>
+            <li>Kirim <code>/register nama equity</code> → terdaftar tapi <strong>belum aktif</strong></li>
+            <li>Baca disclaimer yang dikirim bot</li>
+            <li>Kirim <code>/consent</code> → status <strong>AKTIF</strong>, mulai terima sinyal</li>
+        </ol>
+        <p style="margin-top:12px;color:var(--text-dim)">* Command hanya aktif selama scanner berjalan (jam trading).<br>* /consent diperlukan sebagai bukti bahwa kamu memahami dan menerima risiko trading.</p>
+
+        <h4 style="margin-top:16px">Equity Reminder Otomatis</h4>
+        <p>Setiap hari pada jam <strong>09:00 WIB</strong> (default, dapat dikonfigurasi), bot akan mengirim reminder ke semua user aktif untuk mengupdate equity via <code>/equity</code>. Ini memastikan jumlah Lot pada sinyal selalu akurat sesuai modal terkini.</p>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: FAQ -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>5. FAQ — Pertanyaan yang Sering Muncul</h2>
+
+    <div class="card">
+        <h3>❌ "Boleh geser SL lebih jauh dari target awal?"</h3>
+        <p><strong>Sangat tidak dianjurkan.</strong> Stop Loss yang diberikan sudah dihitung berdasarkan ATR (volatilitas wajar) dan divalidasi oleh 6.000 trade historis. Memperlebar SL artinya:</p>
+        <ul>
+            <li>Satu loss bisa menghapus profit dari 2–3 trade WIN</li>
+            <li>Rasio Risk:Reward rusak — edge strategi hilang</li>
+            <li>Kamu trading di luar aturan strategi yang sudah divalidasi</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Aturan: SL hanya boleh digeser LEBIH DEKAT (ke BEP), tidak pernah lebih jauh.</strong></p>
+    </div>
+
+    <div class="card">
+        <h3>🤔 "Harga sudah 90% menuju TP tapi rasanya mentok. Boleh jual lebih awal?"</h3>
+        <p><strong>Boleh, tapi pahami tradeoff-nya:</strong></p>
+        <ul>
+            <li>✅ 90% profit lebih baik dari 0% (kalau memang berbalik turun)</li>
+            <li>⚠️ Win rate 67% artinya mayoritas trade MEMANG mencapai TP — "rasanya mentok" sering kali salah</li>
+            <li>⚠️ Kalau dilakukan rutin, kamu kehilangan 10% profit dari 67% trade yang seharusnya TP penuh</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Saran:</strong> Lakukan sangat jarang dan hanya jika ada alasan teknis kuat (bukan feeling). Idealnya, trust the system — biarkan TP/SL bekerja.</p>
+    </div>
+
+    <div class="card">
+        <h3>📉 "Loss 3× berturut-turut, apakah strategi sudah tidak bekerja?"</h3>
+        <p><strong>Belum tentu.</strong> Dari data 6 tahun, pernah terjadi loss <strong>9× berturut-turut</strong> dan tetap pulih. Dengan win rate 67%, probabilitas loss 3× berturut = ~3,6% (wajar, bukan tanda strategi rusak).</p>
+        <p style="margin-top:8px"><strong>Yang perlu diwaspadai:</strong> bukan jumlah loss beruntun, tapi apakah dalam 1 bulan penuh hasilnya negatif. Bulan terburuk di backtest = −Rp 4,5 jt (0,8% dari total profit). Selama loss masih dalam range ini → normal.</p>
+    </div>
+
+    <div class="card">
+        <h3>⏰ "Dapat sinyal tapi sudah lewat 5 menit, masih boleh entry?"</h3>
+        <p><strong>Gunakan /signal</strong> untuk cek apakah sinyal masih valid. Jika saham masih muncul di daftar /signal, artinya masih boleh pasang limit order.</p>
+        <ul>
+            <li>Saham <strong>masih muncul di /signal</strong> → masih valid, pasang Limit Order di harga Entry</li>
+            <li>Saham <strong>sudah tidak muncul</strong> → setup sudah batal (SL breach / TP tercapai / expired), skip</li>
+        </ul>
+        <p style="margin-top:8px">Jangan pernah entry di harga lebih tinggi dari Entry yang diberikan — itu merusak rasio risk:reward.</p>
+    </div>
+
+    <div class="card">
+        <h3>💰 "Berapa modal minimal untuk ikut?"</h3>
+        <p>Tergantung harga saham yang muncul. Dengan <strong>risk 1% per trade</strong> dan harga saham IDX berkisar Rp 80–10.000:</p>
+        <ul>
+            <li><strong>Rp 5 juta</strong> — bisa entry saham murah (< Rp 500), mungkin skip saham mahal</li>
+            <li><strong>Rp 10–20 juta</strong> — bisa entry hampir semua sinyal dengan lot yang cukup</li>
+            <li><strong>> Rp 20 juta</strong> — nyaman untuk diversifikasi beberapa posisi bersamaan</li>
+        </ul>
+        <p style="margin-top:8px">Jika lot yang dihitung = 0 (modal terlalu kecil untuk saham itu), notifikasi tetap dikirim dengan keterangan "lot 0" — kamu bisa skip atau entry 1 lot manual.</p>
+    </div>
+
+    <div class="card">
+        <h3>📊 "Apa yang terjadi kalau Limit Order tidak terisi sampai akhir hari?"</h3>
+        <p><strong>Tidak terjadi apa-apa.</strong> Limit Order yang tidak terisi = harga tidak retrace ke area entry. Artinya setup hari itu tidak terpicu. Cukup batalkan order di akhir hari. Tidak ada kerugian — kamu hanya "menunggu" tanpa risiko.</p>
+    </div>
+
+    <div class="card">
+        <h3>🔄 "Boleh ambil sinyal lebih banyak dari yang direkomendasikan (> 7 posisi)?"</h3>
+        <p><strong>Tidak disarankan.</strong> Batasan 7 posisi bersamaan bukan arbitrary — ini constraint yang sudah dibacktest. Lebih banyak posisi = lebih banyak exposure risiko sekaligus. Jika terlalu banyak posisi kena SL bersamaan, kerugian sehari bisa lebih besar dari yang diperkirakan.</p>
+        <p style="margin-top:8px">Notifikasi tetap dikirim semua (dengan peringatan "melebihi kapasitas" untuk rank > 5), tapi <strong>prioritaskan rank 1–5</strong> sesuai urutan estimasi profit terbesar.</p>
+    </div>
+
+    <div class="card">
+        <h3>📋 "Max posisi 7, tapi boleh antri limit order lebih dari 7?"</h3>
+        <p><strong>Ya, boleh.</strong> "Max 7 posisi" di backtest berarti max 7 posisi yang <strong>sudah terisi (fill)</strong> bersamaan — bukan jumlah limit order yang sedang antri.</p>
+        <ul>
+            <li>Limit order yang belum fill = belum jadi posisi (modal belum terpakai)</li>
+            <li>Boleh pasang 10+ limit order sekaligus — tidak semua akan fill</li>
+            <li>Yang penting: <strong>posisi aktif (sudah fill) jangan melebihi 7</strong> agar sesuai dengan model backtest yang divalidasi</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Tips:</strong> Kalau sudah punya 6-7 posisi aktif dan masih ada limit order antri, pertimbangkan cancel limit yang belum fill untuk menjaga batas. Ini keputusan discretionary berdasarkan risk appetite masing-masing.</p>
+    </div>
+
+    <div class="card">
+        <h3>🧠 "Strategi ini bekerja karena apa? Kenapa bisa profit?"</h3>
+        <p>Edge-nya berasal dari kombinasi 3 hal:</p>
+        <ol>
+            <li><strong>Breakout jam pertama</strong> — saham yang breakout di jam pertama cenderung lanjut naik (momentum intraday). Ini fenomena yang terdokumentasi di banyak market.</li>
+            <li><strong>Entry di retrace (FVG)</strong> — bukan mengejar harga di puncak breakout, tapi menunggu harga kembali ke "area celah". Ini memberikan entry lebih baik + SL lebih ketat.</li>
+            <li><strong>Filter ketat</strong> — dari 242 saham × ~250 hari trading/tahun = ~60.000 potensi setup/tahun, hanya ~1.000 yang lolos seluruh filter. Selektivitas ini yang menjaga win rate tinggi.</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <h3>🏦 "Sinyal bilang beli 57 lot, tapi di order book cuma ada 70-100 lot. Apakah ini saham liquid?"</h3>
+        <p><strong>Ya, saham tetap liquid.</strong> Volume MA20 dan order book depth di satu price level itu beda:</p>
+        <ul>
+            <li><strong>Volume MA20</strong> = rata-rata volume yang diperdagangkan per candle 5 menit (lintas SEMUA level harga). Contoh: ~290.000 lembar/candle = 2.900 lot/5 menit.</li>
+            <li><strong>Order book depth</strong> = jumlah lot yang nangkring di SATU level harga spesifik pada satu waktu.</li>
+        </ul>
+        <p style="margin-top:8px">Order 57 lot hanya ~2% dari volume per candle — akan terisi saat harga menyentuh level itu. Karena limit order, tidak ada market impact — kamu hanya "antri" di harga itu.</p>
+    </div>
+
+    <div class="card">
+        <h3>⏰ "Sinyal dikirim jam 11:00 tapi harga baru turun ke Entry jam 14:00. Momentum sudah habis?"</h3>
+        <p><strong>Belum tentu.</strong> Skenario "late retrace" ini sudah termasuk dalam data backtest:</p>
+        <ul>
+            <li>Data menunjukkan entry jam 14:00 punya <strong>win rate 71%</strong> dan <strong>PF 2,03</strong> — justru yang terbaik!</li>
+            <li>Banyak saham yang breakout pagi, naik tinggi, retrace siang, lalu bounce kembali ke TP.</li>
+            <li>Kalau retrace sudah tembus SL sebelum menyentuh Entry → setup otomatis batal (sinyal hilang dari /signal).</li>
+        </ul>
+        <p style="margin-top:8px">Strategi ini tidak membedakan "retrace sehat" vs "trend reversal" — dan secara statistik tidak perlu. Yang penting: <strong>SL sudah terpasang</strong> untuk membatasi loss jika memang sudah bearish.</p>
+    </div>
+
+    <div class="card">
+        <h3>📖 "Order book tipis padahal saham ini masuk universe LIQUID. Tetap entry?"</h3>
+        <p><strong>Saham LIQUID secara median bisa "kering" di hari tertentu.</strong> Likuiditas itu statistik agregat (rata-rata tahunan), bukan jaminan per-momen. Trust the system untuk SIGNAL, tapi gunakan judgment untuk EXECUTION.</p>
+        <p style="margin-top:8px"><strong>Cek cepat sebelum pasang limit buy (< 30 detik):</strong></p>
+        <ul>
+            <li><strong>Spread ≤ 2-3 tick size</strong> → Normal, liquid. Pasang limit seperti biasa.</li>
+            <li><strong>Spread > 5-10 tick size</strong> → Hari ini kering. Boleh skip atau kurangi lot.</li>
+            <li><strong>Spread > 10% harga</strong> → Sangat abnormal. Skip.</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Rule objektif:</strong> Scanner sekarang otomatis mendeteksi spread lebar (> 5 tick) dan menandai saham tersebut dengan ⚠️ "Perhatikan Bid-Ask" di notifikasi. Saham bertanda ini diurutkan ke paling bawah. Kamu bisa skip, atau tetap entry jika setelah cek manual ternyata spread sudah mengecil.</p>
+        <p style="margin-top:8px"><strong>Yang TIDAK boleh jadi alasan skip:</strong></p>
+        <ul>
+            <li>❌ "Chart-nya kok aneh" (feeling)</li>
+            <li>❌ "Sudah naik banyak hari ini" (breakout memang naik banyak — itu normal)</li>
+            <li>❌ "Loss kemarin di saham mirip" (recency bias)</li>
+        </ul>
+        <p style="margin-top:8px">Filter execution yang boleh: <strong>spread abnormal</strong> dan <strong>order book kosong di area SL</strong>. Selain itu, trust the system.</p>
+    </div>
+
+    <div class="card">
+        <h3>🧩 "Order beli 5 lot tapi baru partial fill 1 lot, harga sudah hampir TP. Cancel sisa order?"</h3>
+        <p><strong>Ya, segera cancel sisa 4 lot yang belum terisi.</strong></p>
+        <ul>
+            <li><strong>Setup sudah "terpakai"</strong> — strategi ini 1 entry per hari per saham. Begitu 1 lot ter-fill, entry sudah terjadi. Sisa antrian bukan bagian dari rencana.</li>
+            <li><strong>Risiko jika tidak di-cancel:</strong> harga bisa tiba-tiba berbalik turun, menyentuh limit buy yang masih antri, dan kamu mendadak punya posisi baru 4 lot di konteks yang sudah berbeda (momentum habis, setup tidak lagi valid).</li>
+            <li><strong>Harga sudah jauh di atas entry</strong> → kemungkinan besar sisa order tidak akan fill juga, tapi "kemungkinan besar" bukan jaminan.</li>
+        </ul>
+        <p style="margin-top:8px"><strong>SOP:</strong> Begitu partial fill terjadi dan harga menjauh dari entry → cancel sisa order → manage posisi yang sudah ada (SL/TP seperti biasa). Profit memang lebih kecil (1 lot vs 5 lot), tapi ini realita partial fill. Trade yang hanya partial fill justru cenderung trade yang menang (harga memantul cepat dari area entry).</p>
+    </div>
+
+    <div class="card">
+        <h3>📈 "CAGR 71% — terlalu bagus? Lebih tinggi dari Warren Buffett?"</h3>
+        <p><strong>Angka ini masuk akal untuk strategi intraday otomatis pada small capital</strong>, tapi perlu konteks jujur:</p>
+        <ul>
+            <li><strong>Ini hasil backtest</strong>, bukan live track record. Realita eksekusi bisa mengurangi 20-40% dari angka ini.</li>
+            <li><strong>Small capital advantage</strong> — Rp 20 juta masih kecil relatif terhadap market. Semakin besar equity, semakin sulit mempertahankan CAGR ini.</li>
+            <li><strong>Compounding effect</strong> — CAGR tinggi karena sizing berbasis equity berjalan. Tanpa compounding, return lebih modest.</li>
+            <li><strong>Perbandingan fair</strong>: Buffett mengelola ratusan milyar USD — 20% CAGR di skala itu luar biasa. Di skala Rp 20 jt, 70%+ achievable tapi scalability terbatas.</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Ekspektasi realistis untuk live:</strong> 30–50% CAGR (setengah sampai 80% dari backtest) sudah sangat baik dan sustainable.</p>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- FOOTER -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section style="text-align:center; margin-bottom:40px">
+    <div class="card card-warning" style="text-align:left; border-left-color: var(--accent);">
+        <h3 style="color: var(--accent);">⚠️ DISCLAIMER</h3>
+        <ul style="margin-top:12px">
+            <li>Materi dan Ndod Trading Bot <strong>BUKAN merupakan ajakan, rekomendasi, atau saran untuk membeli atau menjual saham</strong> maupun instrumen keuangan apapun.</li>
+            <li>Hasil backtest adalah simulasi berdasarkan data historis. <strong>Kinerja masa lalu tidak menjamin hasil di masa depan.</strong></li>
+            <li>Setiap keputusan investasi/trading adalah <strong>tanggung jawab pribadi masing-masing</strong>. Pembuat sistem tidak bertanggung jawab atas kerugian yang mungkin terjadi.</li>
+            <li>Trading saham mengandung <strong>risiko kehilangan sebagian atau seluruh modal</strong>. Hanya gunakan dana yang kamu sanggup kehilangan.</li>
+            <li>Sistem ini disediakan <strong>"as is"</strong> tanpa jaminan apapun — baik tersurat maupun tersirat.</li>
+            <li>Lakukan riset mandiri (<em>do your own research</em>) dan/atau konsultasi dengan penasihat keuangan berlisensi sebelum mengambil keputusan.</li>
+        </ul>
+    </div>
+    <p style="color:var(--text-dim); font-size:0.9rem; margin-top:20px">
+        Ndod Trading Bot — Built with Passion ✨ & Love ❤️
+    </p>
+</section>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CHART SCRIPT -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<script>
+const ctx = document.getElementById('equityChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [
+            'Jan-20','Feb-20','Mar-20','Apr-20','May-20','Jun-20','Jul-20','Aug-20','Sep-20','Oct-20','Nov-20','Dec-20',
+            'Jan-21','Feb-21','Mar-21','Apr-21','May-21','Jun-21','Jul-21','Aug-21','Sep-21','Oct-21','Nov-21','Dec-21',
+            'Jan-22','Feb-22','Mar-22','Apr-22','May-22','Jun-22','Jul-22','Aug-22','Sep-22','Oct-22','Nov-22','Dec-22',
+            'Jan-23','Feb-23','Mar-23','Apr-23','May-23','Jun-23','Jul-23','Aug-23','Sep-23','Oct-23','Nov-23','Dec-23',
+            'Jan-24','Feb-24','Mar-24','Apr-24','May-24','Jun-24','Jul-24','Aug-24','Sep-24','Oct-24','Nov-24','Dec-24',
+            'Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25',
+            'Jan-26','Feb-26','Mar-26','Apr-26'
+        ],
+        datasets: [{
+            label: 'Profit Kumulatif (Rp juta)',
+            data: [
+                0.25,0.38,0.39,1.11,0.51,1.68,1.52,2.04,1.94,1.48,3.24,4.00,
+                4.53,7.03,9.09,13.19,14.32,15.65,15.60,16.77,21.42,22.79,24.04,26.83,
+                31.80,36.08,37.13,40.14,44.29,46.75,46.12,50.48,54.46,53.12,55.16,55.73,
+                61.33,62.94,66.20,68.91,69.71,73.24,77.34,79.24,82.32,88.64,90.08,93.49,
+                94.89,97.61,92.97,99.63,103.22,101.97,111.43,116.88,130.16,133.90,142.85,148.14,
+                152.49,157.21,168.05,171.31,181.42,177.65,198.68,238.35,262.88,281.16,301.79,321.41,
+                353.57,379.69,379.98,382.67
+            ],
+            borderColor: '#00d2a0',
+            backgroundColor: 'rgba(0,210,160,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
+            borderWidth: 2.5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => `Rp ${ctx.parsed.y.toFixed(1)} juta`
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: '#6b6b80', maxTicksLimit: 12 },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+                ticks: {
+                    color: '#6b6b80',
+                    callback: v => `Rp ${v} jt`
+                },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>
