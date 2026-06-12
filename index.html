@@ -48,7 +48,7 @@
                 <tr><td>Max Entry Time</td><td>15:45</td><td>Batas waktu entry terakhir</td></tr>
 
                 <tr><td colspan="3" style="color:var(--accent-blue); font-weight:600; border-bottom:none; padding-top:16px">── Fair Value Gap (FVG)</td></tr>
-                <tr><td>Retrace %</td><td>50%</td><td>Entry di tengah FVG (area celah)</td></tr>
+                <tr><td>Retrace %</td><td>61,8%</td><td>Entry lebih dalam ke FVG — lebih selektif, kualitas per-trade lebih tinggi (divalidasi walk-forward 8/8 window)</td></tr>
                 <tr><td>ATR Buffer SL</td><td>0,2 × ATR14</td><td>Buffer bawah FVG untuk SL</td></tr>
                 <tr><td>Min/Max Buffer Tick</td><td>2 / 8</td><td>Batas buffer SL dalam tick</td></tr>
 
@@ -222,9 +222,9 @@
             <p class="metric-desc">CAGR / Max Drawdown = 70,6% / 4,68%. > 3 = sangat baik.</p>
         </div>
         <div class="metric">
-            <span class="metric-value">13,16</span>
-            <span class="metric-label">SQN</span>
-            <p class="metric-desc">System Quality Number — mengukur seberapa "baik" sebuah sistem trading. > 7 = "holy grail" (klasifikasi Van Tharp). Semakin tinggi = edge semakin konsisten.</p>
+            <span class="metric-value">1,68</span>
+            <span class="metric-label">SQN (normalized N=100)</span>
+            <p class="metric-desc">System Quality Number (Van Tharp), dihitung dengan N di-cap 100 sesuai definisi asli — mengukur KUALITAS sistem, bukan ukuran sampel. Skala: 1,6–1,9 = average, 2,0–2,4 = good, 2,5+ = excellent. Catatan jujur: tanpa cap, SQN tampak ~13 karena faktor √N membengkak oleh 6.000+ trade — itu artefak ukuran sampel, bukan kualitas. Edge per-trade memang moderat (rasio mean/std ~0,17); kekuatan sistem datang dari BANYAKNYA trade independen, bukan dari tiap trade.</p>
         </div>
         <div class="metric">
             <span class="metric-value">6,2</span>
@@ -368,6 +368,71 @@
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2B: WALK-FORWARD VALIDASI RETRACE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section>
+    <h2>2b. Walk-Forward Validation — Retrace 61,8%</h2>
+    <p>Parameter <strong>Retrace 61,8%</strong> dipilih berdasarkan backtest portfolio penuh yang menunjukkan keunggulan terhadap baseline (50%). Namun backtest penuh melihat seluruh data sekaligus — rentan <em>curve-fitting</em>. Walk-forward menjawab: "kalau kita hanya tahu data sampai sebelum periode X, apakah 61,8% tetap menang di periode X yang belum pernah dilihat?"</p>
+
+    <div class="card card-highlight" style="border-left-color: var(--accent-green);">
+        <h3>✅ Hasil: 8 dari 8 window, Ret 61,8% menang di SETIAP metrik</h3>
+        <p>Tidak ada satu pun periode out-of-sample di mana baseline 50% lebih baik. Sapu bersih — keputusan ini <strong>robust dan bukan kebetulan</strong>.</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th rowspan="2">Periode<br>(6 bulan)</th><th colspan="2">Expectancy R</th><th colspan="2">Win Rate</th><th colspan="2">Profit Factor</th><th colspan="2">SQN (norm 100)</th></tr>
+            <tr><th>50%</th><th>61,8%</th><th>50%</th><th>61,8%</th><th>50%</th><th>61,8%</th><th>50%</th><th>61,8%</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>2022 H1</td><td>0,190</td><td style="color:var(--accent-green)"><strong>0,256</strong></td><td>69,1%</td><td style="color:var(--accent-green)"><strong>72,6%</strong></td><td>1,51</td><td style="color:var(--accent-green)"><strong>1,78</strong></td><td>2,01</td><td style="color:var(--accent-green)"><strong>2,83</strong></td></tr>
+            <tr><td>2022 H2</td><td>0,111</td><td style="color:var(--accent-green)"><strong>0,190</strong></td><td>65,7%</td><td style="color:var(--accent-green)"><strong>70,3%</strong></td><td>1,26</td><td style="color:var(--accent-green)"><strong>1,51</strong></td><td>1,12</td><td style="color:var(--accent-green)"><strong>1,96</strong></td></tr>
+            <tr><td>2023 H1</td><td>0,216</td><td style="color:var(--accent-green)"><strong>0,260</strong></td><td>70,3%</td><td style="color:var(--accent-green)"><strong>72,8%</strong></td><td>1,61</td><td style="color:var(--accent-green)"><strong>1,79</strong></td><td>2,31</td><td style="color:var(--accent-green)"><strong>2,85</strong></td></tr>
+            <tr><td>2023 H2</td><td>0,128</td><td style="color:var(--accent-green)"><strong>0,189</strong></td><td>66,3%</td><td style="color:var(--accent-green)"><strong>68,9%</strong></td><td>1,31</td><td style="color:var(--accent-green)"><strong>1,51</strong></td><td>1,29</td><td style="color:var(--accent-green)"><strong>1,97</strong></td></tr>
+            <tr><td>2024 H1</td><td>0,131</td><td style="color:var(--accent-green)"><strong>0,227</strong></td><td>66,2%</td><td style="color:var(--accent-green)"><strong>71,6%</strong></td><td>1,32</td><td style="color:var(--accent-green)"><strong>1,65</strong></td><td>1,35</td><td style="color:var(--accent-green)"><strong>2,39</strong></td></tr>
+            <tr><td>2024 H2</td><td>0,227</td><td style="color:var(--accent-green)"><strong>0,304</strong></td><td>70,7%</td><td style="color:var(--accent-green)"><strong>74,7%</strong></td><td>1,65</td><td style="color:var(--accent-green)"><strong>2,01</strong></td><td>2,45</td><td style="color:var(--accent-green)"><strong>3,48</strong></td></tr>
+            <tr><td>2025 H1</td><td>0,185</td><td style="color:var(--accent-green)"><strong>0,280</strong></td><td>69,3%</td><td style="color:var(--accent-green)"><strong>74,4%</strong></td><td>1,50</td><td style="color:var(--accent-green)"><strong>1,89</strong></td><td>1,92</td><td style="color:var(--accent-green)"><strong>3,05</strong></td></tr>
+            <tr><td>2025 H2</td><td>0,284</td><td style="color:var(--accent-green)"><strong>0,356</strong></td><td>73,5%</td><td style="color:var(--accent-green)"><strong>77,5%</strong></td><td>1,91</td><td style="color:var(--accent-green)"><strong>2,34</strong></td><td>3,22</td><td style="color:var(--accent-green)"><strong>4,28</strong></td></tr>
+        </tbody>
+    </table>
+
+    <h3>Ringkasan Agregat (seluruh 8 window digabung)</h3>
+    <div class="metrics-grid">
+        <div class="metric">
+            <span class="metric-value" style="color:var(--accent-green)">+39%</span>
+            <span class="metric-label">Expectancy R</span>
+            <p class="metric-desc">0,261 vs 0,188 — setiap trade menghasilkan 39% lebih banyak profit (dalam unit risk) dibanding baseline.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value" style="color:var(--accent-green)">73%</span>
+            <span class="metric-label">Win Rate</span>
+            <p class="metric-desc">vs 69% baseline. 3 dari 4 trade menang — lebih tenang dijalani secara psikologis setiap harinya.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value" style="color:var(--accent-green)">1,80</span>
+            <span class="metric-label">Profit Factor</span>
+            <p class="metric-desc">vs 1,50 baseline (+19%). Setiap Rupiah yang dirisikokan menghasilkan profit lebih besar.</p>
+        </div>
+        <div class="metric">
+            <span class="metric-value" style="color:var(--accent-green)">8/8</span>
+            <span class="metric-label">Window Menang</span>
+            <p class="metric-desc">Sapu bersih — 0.618 unggul di seluruh periode out-of-sample tanpa kecuali. Bukan kebetulan.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Kenapa 61,8% lebih baik? (intuisi)</h3>
+        <p>Retrace 61,8% artinya entry <strong>lebih dalam ke FVG</strong> (lebih dekat ke support bawah celah). Dampaknya:</p>
+        <ul>
+            <li><strong>Harga entry lebih rendah</strong> → jarak ke TP lebih dekat, jarak ke SL lebih jauh → trade yang ter-trigger punya probabilitas win lebih tinggi.</li>
+            <li><strong>Lebih selektif</strong> — tidak semua setup berhasil retrace sedalam 61,8%, hanya yang memiliki retracement kuat yang entry. Ini memfilter setup marginal secara alami.</li>
+            <li><strong>Trade-off frekuensi</strong> — ~23% lebih sedikit trade. Tapi tiap trade kualitasnya lebih tinggi. SQN (yang memperhitungkan jumlah sampel) tetap unggul → peningkatan kualitas > penurunan kuantitas.</li>
+        </ul>
+        <p style="margin-top:12px">Analogi: memancing di kolam yang lebih dalam. Ikan lebih sedikit yang mau sampai ke situ, tapi yang sampai = ikan besar (win probability tinggi). Hasilnya: jumlah ikan (trade) turun, tapi total berat (profit) justru naik.</p>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- SECTION 3: CONSTRAINTS & REALISME -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <section>
@@ -408,7 +473,7 @@
         <ul>
             <li><strong>Backtest only</strong> — belum ada live track record (dimulai Juni 2026). Virtual account benchmark berjalan paralel sebagai forward test.</li>
             <li><strong>Survivorship bias minimal</strong> — universe menggunakan `is_active` flag saat ini, bukan filter dinamis per-tahun. Saham yang delisted di tengah jalan tidak masuk dataset.</li>
-            <li><strong>Data snooping risk</strong> — parameter dioptimasi via sweep pada data historis. Mitigasi: walk-forward validation 8 window non-overlapping (semua positif).</li>
+            <li><strong>Data snooping risk</strong> — parameter dioptimasi via sweep pada data historis. Mitigasi: walk-forward validation 8 window non-overlapping (semua positif) + validasi retrace 0.618 vs baseline OOS (8/8 window menang, sweep-008).</li>
             <li><strong>No transaction cost for capital</strong> — backtest tidak memperhitungkan opportunity cost modal yang idle (equity di rekening broker tidak menghasilkan bunga).</li>
             <li><strong>Capacity constraint</strong> — strategi ini bekerja di small-to-mid capital (Rp 20 jt – Rp 500 jt). Di atas itu, participation cap dan likuiditas IDX menjadi bottleneck.</li>
             <li><strong>Single strategy, single market</strong> — tidak ada diversifikasi strategi maupun cross-market. Fully exposed ke regime risk IDX.</li>
@@ -524,14 +589,14 @@ Equity acuan: Rp 20.000.000
   TP     : 1.715
   P&L   : Rp 15.888 (+1,89%)
 
-#4 <strong>BOGA</strong> ⚠️<b>Perhatikan Bid-Ask</b>
+#4 <strong>BOGA</strong> ⚠️<b>Spread Lebar</b>
   Entry : 1.205
   Lot    : 3
   SL     : 1.020
   TP     : 1.390
   P&L   : Rp 54.435 (+15,06%)
 
-#5 <strong>HOPE</strong> ⚠️<b>Perhatikan Bid-Ask</b>
+#5 <strong>HOPE</strong> ⚠️<b>Spread Lebar</b>
   Entry : 106
   Lot    : 38
   SL     : 96
@@ -694,7 +759,7 @@ Equity acuan: Rp 20.000.000
             <li><strong>Spread > 5-10 tick size</strong> → Hari ini kering. Boleh skip atau kurangi lot.</li>
             <li><strong>Spread > 10% harga</strong> → Sangat abnormal. Skip.</li>
         </ul>
-        <p style="margin-top:8px"><strong>Rule objektif:</strong> Scanner sekarang otomatis mendeteksi spread lebar (> 5 tick) dan menandai saham tersebut dengan ⚠️ "Perhatikan Bid-Ask" di notifikasi. Saham bertanda ini diurutkan ke paling bawah. Kamu bisa skip, atau tetap entry jika setelah cek manual ternyata spread sudah mengecil.</p>
+        <p style="margin-top:8px"><strong>Rule objektif:</strong> Scanner sekarang otomatis mendeteksi spread lebar (> 5 tick) dan menandai saham tersebut dengan ⚠️ "Spread Lebar" di notifikasi. Saham bertanda ini diurutkan ke paling bawah. Kamu bisa skip, atau tetap entry jika setelah cek manual ternyata spread sudah mengecil.</p>
         <p style="margin-top:8px"><strong>Yang TIDAK boleh jadi alasan skip:</strong></p>
         <ul>
             <li>❌ "Chart-nya kok aneh" (feeling)</li>
@@ -725,6 +790,65 @@ Equity acuan: Rp 20.000.000
             <li><strong>Perbandingan fair</strong>: Buffett mengelola ratusan milyar USD — 20% CAGR di skala itu luar biasa. Di skala Rp 20 jt, 70%+ achievable tapi scalability terbatas.</li>
         </ul>
         <p style="margin-top:8px"><strong>Ekspektasi realistis untuk live:</strong> 30–50% CAGR (setengah sampai 80% dari backtest) sudah sangat baik dan sustainable.</p>
+    </div>
+
+    <div class="card">
+        <h3>🏷️ "Harga Entry tidak ada di Ask / harga TP-SL tidak ada di Bid. Saham ini illiquid?"</h3>
+        <p><strong>Belum tentu.</strong> Harga Entry, TP, dan SL adalah <strong>target harga di masa depan</strong> — wajar belum ada antrian di level itu saat ini:</p>
+        <ul>
+            <li><strong>Entry</strong> dihitung dari retrace FVG. Kalau harga masih di atas target entry, belum ada yang menjual (Ask) di level itu — ini normal.</li>
+            <li><strong>TP</strong> di atas harga saat ini — belum ada yang beli (Bid) di situ karena belum tercapai.</li>
+            <li><strong>SL</strong> di bawah harga saat ini — sama, belum ada Bid aktif di sana karena harga belum turun.</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Karena kamu pakai Limit Order:</strong> order kamu masuk ke antrian dan menunggu harga menyentuh level tersebut. Selama ada counter-party saat harga sampai ke level itu, order akan terisi.</p>
+        <p style="margin-top:8px"><strong>Bagaimana jika harga SUDAH di area Entry/TP/SL tapi level harga tersebut tidak ada di antrian?</strong></p>
+        <p>Ini artinya ada "gap" di order book — tidak ada antrian di level harga itu. Contoh: Entry kamu 152 tapi di Ask langsung loncat dari 150 ke 154 (harga 151, 152, 153 kosong). Ini bisa terjadi karena:</p>
+        <ul>
+            <li><strong>Order book tipis (hari ini kering)</strong> — memang tidak ada yang pasang order di level itu. Ini yang benar-benar illiquid.</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Apa yang harus dilakukan?</strong></p>
+        <ul>
+            <li><strong>Untuk Entry (Buy):</strong> Pasang Limit Buy di harga Entry seperti biasa. Kamu yang membuat antrian baru di level itu. Kalau harga turun lewat level itu, order kamu akan ter-fill. Tidak perlu ada Ask yang sudah ada di situ — kamu menunggu seller datang.</li>
+            <li><strong>Untuk TP (Sell):</strong> Pasang Limit Sell di harga TP. Kamu membuat antrian jual baru. Kalau harga naik ke situ, buyer akan matching order kamu.</li>
+            <li><strong>Untuk SL (Sell):</strong> Idealnya pakai Stop Loss Order jika broker support. Jika tidak: monitor manual dan pasang Limit Sell jika harga mendekati SL. Ingat: saat SL terpicu, kamu menjual — butuh buyer (Bid) di harga itu. Jika Bid kosong di area SL, kamu mungkin ter-fill di harga lebih rendah (slippage).</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Kapan ini jadi masalah serius?</strong></p>
+        <ul>
+            <li>Jika <strong>spread > 5 tick</strong> dan <strong>antrian tipis di semua level sekitar SL</strong> → risiko slippage saat exit loss. Pertimbangkan skip atau kurangi lot.</li>
+            <li>Jika saham <strong>ditandai ⚠️ "Spread Lebar"</strong> oleh scanner → cek manual dulu sebelum entry.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h3>🎯 "Harga sudah di TP tapi limit sell belum fill — antrian masih panjang. Tunggu atau turunkan harga?"</h3>
+        <p><strong>Turunkan ke TP−1 tick.</strong> Data backtest 6.404 trade menunjukkan: jual di TP−1 tick secara statistik menghasilkan net expectancy <strong>lebih tinggi</strong> daripada menunggu fill di TP persis. Alasan: 75% trade yang akhirnya LOSS ternyata pernah menyentuh level TP−1 tick sebelum berbalik ke SL.</p>
+        <p style="margin-top:8px"><strong>SOP ketika harga di area TP dan limit sell belum fill:</strong></p>
+        <ol>
+            <li><strong>Cancel</strong> limit sell di harga TP</li>
+            <li>Pasang <strong>limit sell baru di TP−1 tick</strong> (bukan market order/HAKI — agar harga jual terjamin)</li>
+            <li>Kalau masih belum fill dan harga mulai turun → boleh turunkan ke TP−2 atau TP−3 tick, <strong>selama PnL masih positif</strong></li>
+        </ol>
+        <p style="margin-top:8px"><strong>Kenapa limit sell, bukan market order (HAKI)?</strong></p>
+        <ul>
+            <li>Market order bisa fill di harga yang tidak terduga (−2, −3 tick atau lebih) jika bid tipis</li>
+            <li>Limit sell di TP−1 tick menjamin harga jual minimum — tidak ada risiko slippage lebih jauh</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Prinsip:</strong> Profit yang sudah di tangan lebih baik daripada menunggu fill sempurna yang mungkin tidak datang. Kehilangan 1-3 tick dari TP jauh lebih kecil risikonya dibanding harga reversal ke SL.</p>
+        <p style="margin-top:8px"><strong>Batasan dari backtest:</strong></p>
+        <ul>
+            <li>Jual di TP−1 tick (seluruh trade) → net <strong>positif</strong> (+195 jt)</li>
+            <li>Jual di TP−2 tick (seluruh trade) → net <strong>negatif</strong> (−395 jt)</li>
+        </ul>
+        <p>Artinya: jual di TP−1 tick sebagai rule mekanis → lebih baik. Jual di TP−2/−3 hanya sebagai <strong>keputusan situasional</strong> (harga sudah mulai turun, antrian tidak realistis) — bukan rule default.</p>
+
+        <p style="margin-top:12px"><strong>⚠️ Penting — mekanisme Auto Sell di Stockbit:</strong></p>
+        <p>Begitu harga menyentuh trigger TP, broker otomatis mengirim sell order ke BEI dan <strong>membatalkan SL</strong>. Artinya:</p>
+        <ul>
+            <li>Sell order kamu sudah <strong>antri di orderbook</strong> pada harga TP</li>
+            <li>SL sudah <strong>withdrawn</strong> — tidak ada pelindung lagi</li>
+            <li>Jika antrian panjang dan harga berbalik turun → posisi <strong>terbuka tanpa proteksi SL</strong></li>
+        </ul>
+        <p>Ini alasan utama kenapa harus <strong>segera action</strong> ketika sell belum fill di TP: cancel sell order lama, pasang limit sell baru di harga lebih rendah (TP−1/−2 tick) agar cepat fill sebelum harga jatuh tanpa safety net.</p>
     </div>
 </section>
 
